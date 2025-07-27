@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cesium - Zoom to User from Top</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.131/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.131/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+      <style>
+      html, body, #cesiumContainer {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+      
+
+    </style>
+</head>
+  <body>
+    <div id="cesiumContainer"></div>
+  <script>
+    window.onload = async function () {
+      try {
+                 // 🔐 Cesium Ion Access Token
+         Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYTY2ZGMwNi1jZDFhLTQ4MWQtOGE2NC03ODRiOTY0ZmNkYzIiLCJpZCI6MzI1NjQ1LCJpYXQiOjE3NTM1ODM4MjZ9.RZsXchYIb8V1uGesHfXOeJNc-zGY0IAVyQcCAk6JS54';
+
+                 // 👁️‍🗨️ إنشاء العارض مع صور قمر صناعي حقيقية وتيرين
+         const viewer = new Cesium.Viewer('cesiumContainer', {
+           baseLayerPicker: false,
+           animation: false,
+           timeline: false,
+           sceneModePicker: false,
+           homeButton: false,
+           navigationHelpButton: false,
+           fullscreenButton: false,
+           infoBox: false,
+           selectionIndicator: false,
+           geocoder: false
+         });
+         
+         // إزالة العلامة المائية
+         viewer.cesiumWidget.creditContainer.style.display = 'none';
+
+                 // 🌍 استخدام Cesium Ion فقط
+         try {
+           // إزالة الطبقة الافتراضية
+           viewer.imageryLayers.removeAll();
+           
+           // استخدام Cesium World Imagery مع إعدادات صحيحة
+           const imageryProvider = await Cesium.IonImageryProvider.fromAssetId(2);
+           viewer.imageryLayers.addImageryProvider(imageryProvider);
+           
+         } catch (e) {
+           console.log('فشل في تحميل Cesium World Imagery، استخدام Cesium Natural Earth');
+           try {
+             // استخدام Cesium Natural Earth كبديل
+             const imageryProvider2 = await Cesium.IonImageryProvider.fromAssetId(3);
+             viewer.imageryLayers.addImageryProvider(imageryProvider2);
+           } catch (e2) {
+             console.log('فشل في تحميل Cesium Natural Earth، استخدام Cesium OSM');
+             try {
+               // استخدام Cesium OSM كبديل نهائي
+               const imageryProvider3 = await Cesium.IonImageryProvider.fromAssetId(3845);
+               viewer.imageryLayers.addImageryProvider(imageryProvider3);
+             } catch (e3) {
+               console.log('فشل في تحميل جميع خيارات Cesium Ion، استخدام خريطة بسيطة');
+               // استخدام خريطة بسيطة كبديل نهائي
+               viewer.scene.globe.material = Cesium.Material.fromType('Color', {
+                 color: new Cesium.Color(0.2, 0.4, 0.8, 1.0)
+               });
+             }
+           }
+         }
+         
+         // 🌍 إضاءة وسماء واقعية
+         viewer.scene.globe.enableLighting = true;
+         viewer.scene.skyAtmosphere.show = true;
+         viewer.scene.skyBox.show = true;
+         
+         // تحسين جودة الصور
+         viewer.scene.globe.maximumScreenSpaceError = 1.0; // تحسين الجودة
+         viewer.scene.globe.tileCacheSize = 1000; // زيادة حجم الكاش
+         
+         // إعدادات إضافية للصور
+         viewer.scene.globe.enableLighting = true; // إعادة تفعيل الإضاءة
+         viewer.scene.fog.enabled = false; // إزالة الضباب
+         
+         // إعدادات Cesium Ion
+         viewer.scene.globe.maximumScreenSpaceError = 1.0;
+         viewer.scene.globe.tileCacheSize = 1000;
+         
+         // تعيين موقع الكاميرا الأولي
+         viewer.camera.setView({
+           destination: Cesium.Cartesian3.fromDegrees(0, 0, 20000000),
+           orientation: {
+             heading: 0.0,
+             pitch: -Cesium.Math.PI_OVER_TWO,
+             roll: 0.0
+           }
+         });
+         
+         // انتظار قليل لتحميل الصور
+         setTimeout(() => {
+           viewer.scene.requestRender();
+         }, 1000);
+
+                 // 📡 موقع المستخدم
+         if (navigator.geolocation) {
+           navigator.geolocation.getCurrentPosition(
+             function (position) {
+               const lat = position.coords.latitude;
+               const lon = position.coords.longitude;
+
+               // انتظار 2 ثانية حتى تحمل الخريطة ثم Zoom
+               setTimeout(() => {
+                                  // 📍 Zoom من أعلى مباشرة
+                 viewer.camera.flyTo({
+                   destination: Cesium.Cartesian3.fromDegrees(lon, lat, 3000),
+                   duration: 8, // نصف السرعة (من 4 إلى 8 ثواني)
+                   orientation: {
+                     heading: 0,
+                     pitch: Cesium.Math.toRadians(-90), // يبص لتحت مباشرة
+                     roll: 0
+                   }
+                 });
+
+                 // 🔴 نقطة + لابل
+                 viewer.entities.add({
+                   position: Cesium.Cartesian3.fromDegrees(lon, lat),
+                   point: {
+                     pixelSize: 10,
+                     color: Cesium.Color.RED
+                   },
+                   label: {
+                     text: '',
+                     font: '18px sans-serif',
+                     fillColor: Cesium.Color.YELLOW,
+                     style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                     outlineWidth: 2,
+                     verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                     pixelOffset: new Cesium.Cartesian2(0, -15)
+                   }
+                 });
+               }, 2000); // انتظار 2 ثانية
+             },
+            function (error) {
+              console.error("فشل في تحديد الموقع:", error);
+              alert("تعذر تحديد موقعك الجغرافي.");
+            }
+          );
+        } else {
+          alert("المتصفح لا يدعم تحديد الموقع الجغرافي.");
+        }
+
+      } catch (error) {
+        console.error("حدث خطأ أثناء تحميل Cesium:", error);
+      }
+    };
+  </script>
+</body>
+</html>
